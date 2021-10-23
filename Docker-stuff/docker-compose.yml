@@ -1,25 +1,27 @@
+#how to run, command: docker-compose -p "postgres-containers" up
 version: '3.1'
 
 services:
-
   postgres:
     image: postgres
-    restart: always
+    container_name: postgres
+    restart: unless-stopped
     ports:
       - 5432:5432
     environment:
-      POSTGRES_USER: username
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: default_database 
+      POSTGRES_USER: username #use real username here
+      POSTGRES_PASSWORD: password #user real, more sophisticated password here
+      POSTGRES_DB: default_database #this is optional
     volumes:
       - ./db-data/:/var/lib/postgresql/data/
 
   #for future reference, I still prefer azure data studio, convince me otherwise
   pgadmin:
     image: dpage/pgadmin4
-    restart: always
+    container_name: pgadmin
+    restart: unless-stopped
     ports:
-    - 8484:80
+      - 8484:80
     environment:
-      PGADMIN_DEFAULT_EMAIL: email@email.com
-      PGADMIN_DEFAULT_PASSWORD: password
+      PGADMIN_DEFAULT_EMAIL: email@email.com #user real email here
+      PGADMIN_DEFAULT_PASSWORD: password #user real, more sophisticated password here
