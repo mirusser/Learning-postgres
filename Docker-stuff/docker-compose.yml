@@ -10,7 +10,7 @@ services:
       - 5432:5432
     environment:
       POSTGRES_USER: username #use real username here
-      POSTGRES_PASSWORD: password #user real, more sophisticated password here
+      POSTGRES_PASSWORD: password #use real, more sophisticated password here
       POSTGRES_DB: default_database #this is optional
     volumes:
       - ./db-data/:/var/lib/postgresql/data/
@@ -23,5 +23,5 @@ services:
     ports:
       - 8484:80
     environment:
-      PGADMIN_DEFAULT_EMAIL: email@email.com #user real email here
-      PGADMIN_DEFAULT_PASSWORD: password #user real, more sophisticated password here
+      PGADMIN_DEFAULT_EMAIL: email@email.com #use real email here
+      PGADMIN_DEFAULT_PASSWORD: password #use real, more sophisticated password here
