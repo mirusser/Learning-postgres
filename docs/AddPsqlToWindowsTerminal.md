@@ -10,7 +10,7 @@
 
 ```
 {
-    "commandline" : "\"%PROGRAMFILES%\\PostgreSQL\\13\\scripts\\runpsql.bat\" -i -l",
+    "commandline" : "\"%PROGRAMFILES%\\PostgreSQL\\14\\scripts\\runpsql.bat\" -i -l",
     "hidden": false,
     "name": "PostgreSQL"
 }
