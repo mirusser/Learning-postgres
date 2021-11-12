@@ -1,4 +1,4 @@
-#Basic queries
+# Basic queries
 
 - Create database:
   `CREATE DATABASE database_name;`

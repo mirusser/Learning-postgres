@@ -1,4 +1,4 @@
-#Basic shell commands
+# Basic shell commands
 
 - quit:
   `\q`
