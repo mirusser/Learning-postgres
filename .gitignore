@@ -441,3 +441,5 @@ $RECYCLE.BIN/
 !.vscode/launch.json
 !.vscode/extensions.json
 /Docker-stuff/db-data
+/Docker-stuff/data
+/Docker-stuff/db-data1
