@@ -15,3 +15,5 @@
   `\d` (`d` stands for description)
 - show table/relation description/details:
   `\d <table>` (e.g. `\d person`)
+- show only tables:
+  `\dt`
