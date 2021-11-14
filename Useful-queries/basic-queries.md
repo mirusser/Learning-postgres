@@ -79,7 +79,7 @@
     ```
     e.g.
     ```
-     ALTER TABLE person ALTER COLUMN gender TYPE VARCHAR(10);
+    ALTER TABLE person ALTER COLUMN gender TYPE VARCHAR(10);
     ```
 - ignore case sensitivity while filtering a string
     `iLIKE`
@@ -87,3 +87,32 @@
     ```
     SELECT country FROM person WHERE country iLIKE '%germ%';
     ```
+- coalesce - return first non-null value
+    `COALESCE(<argument_1>, <argument_2>, ...)`
+    e.g.
+    ```
+    SELECT COALESCE(country, 'Unknown') FROM person;
+    ```
+    - coalesce with nullif e.g.
+    ```
+    select coalesce(10/nullif(0,0), 0);
+    ```
+- get current timestamp (full date):
+    `SELECT NOW();`
+- get current date:
+    `SELECT NOW()::DATE;`
+- get current time:
+    `SELECT NOW()::TIME;`
+- adding and subtracting with dates e.g.
+    ```
+    SELECT NOW() - INTERVAL '1 YEAR';
+    SELECT NOW() - INTERVAL '10 YEARS';
+    SELECT NOW() - INTERVAL '5 MONTHS';
+    SELECT NOW() - INTERVAL '1 MONTH';
+    SELECT NOW() - INTERVAL '23 DAYS';
+    SELECT NOW() + INTERVAL '53 DAY';
+    SELECT (NOW() + INTERVAL '53 DAY')::DATE;
+    ```
+    (`s` at the end is optional)
+- get current age:
+    `SELECT AGE(NOW(), <starting_date>);`
