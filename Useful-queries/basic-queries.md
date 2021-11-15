@@ -81,6 +81,9 @@
     ```
     ALTER TABLE person ALTER COLUMN gender TYPE VARCHAR(10);
     ```
+
+
+
 - ignore case sensitivity while filtering a string
     `iLIKE`
     e.g.
@@ -116,3 +119,16 @@
     (`s` at the end is optional)
 - get current age:
     `SELECT AGE(NOW(), <starting_date>);`
+- constraints:
+    - UNIQUE:
+    `ALTER TABLE <table_name> ADD CONSTRAINT <constraint_name> UNIQUE (<column_name>, <another_column_name>, ...);`
+    e.g.
+        ```
+        ALTER TABLE person ADD CONSTRAINT unique_email_address UNIQUE (email);
+        ```
+    - CHECK: 
+    `ALTER TABLE <table_name> ADD CONSTRAINT <constraint_name> CHECK (<condition>);`
+    e.g.
+        ```
+        ALTER TABLE person ADD CONSTRAINT CHECK(gender = 'Female' or gender = 'Male');
+        ```
