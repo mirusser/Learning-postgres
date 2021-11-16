@@ -27,7 +27,7 @@
     );  
     ```
 - drop/delete table:
-    `DROP TABLE <table_name>` 
+    `DROP TABLE <table_name>;` 
     e.g. 
     ```
     DROP TABLE person;
@@ -81,8 +81,28 @@
     ```
     ALTER TABLE person ALTER COLUMN gender TYPE VARCHAR(10);
     ```
-
-
+- delete/remove records:
+    `DELETE FROM <table_name> WHERE <condition>;`
+    e.g.
+    ```
+    DELETE FROM person WHERE Id = 12;
+    ```
+- update records:
+    ```
+    UPDATE <table_name> 
+    SET 
+        <column_name> = <value>,
+        <another_column_name> = <another_value>, 
+        ... 
+    WHERE <condition>;
+    ```
+    e.g.
+    ```
+    UPDATE person 
+    SET 
+        email = 'example@example.com`
+    WHERE Id = 12;
+    ```
 
 - ignore case sensitivity while filtering a string
     `iLIKE`
@@ -132,3 +152,33 @@
         ```
         ALTER TABLE person ADD CONSTRAINT CHECK(gender = 'Female' or gender = 'Male');
         ```
+- upsert 
+    : combination of update or insert, could be also referred to as a merge when you are trying to insert row that already exists
+    ```
+    INSERT INTO <table_name>(<column_list>) 
+    VALUES(<value_list>)
+    ON CONFLICT <target> <action>;
+    ```
+    - `target` can be one of the following:
+        - `<column_name>`
+        - `ON CONSTRAINT <constraint_name>` - mostly `UNIQUE` constraint
+        - `WHERE <condition>`
+    - `action` can be one of the following:
+        - `DO NOTHING`
+        - `DO UPDATE SET <column_name> = <value>, ... WHERE <condition>` - `WHERE` is optional
+
+    e.g.
+    ```
+    INSERT INTO person (name, email, country)
+    VALUES('John','email@example.com', 'Germany') 
+    ON CONFLICT 
+        ON CONSTRAINT person_name_key 
+        DO NOTHING;
+    ```
+    ```
+    INSERT INTO person (name, email, country)
+    VALUES('John','email@example.com', 'Germany') 
+    ON CONFLICT 
+        (email) 
+        DO UPDATE SET name = EXCLUDED.name, email = EXCLUDED.email, country = EXCLUDED.country;
+    ```
