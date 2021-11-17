@@ -141,8 +141,10 @@
     `SELECT AGE(NOW(), <starting_date>);`
 - constraints:
     - UNIQUE:
-    `ALTER TABLE <table_name> ADD CONSTRAINT <constraint_name> UNIQUE (<column_name>, <another_column_name>, ...);`
-    e.g.
+        ```
+        ALTER TABLE <table_name> ADD CONSTRAINT <constraint_name> UNIQUE (<column_name>,    <another_column_name>, ...);
+        ```
+        e.g.
         ```
         ALTER TABLE person ADD CONSTRAINT unique_email_address UNIQUE (email);
         ```
