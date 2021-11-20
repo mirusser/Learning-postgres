@@ -227,3 +227,19 @@
       (email)
       DO UPDATE SET name = EXCLUDED.name, email = EXCLUDED.email, country = EXCLUDED.country;
   ```
+- install extension:
+    ```sql
+    CREATE EXTENSION IF NOT EXISTS "[extension_name]";
+    ```
+    e.g.
+    ```sql
+    CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+    ```
+- invoke a function:
+    ```sql
+    SELECT [function_name]();
+    ```
+    e.g.
+    ```sql
+    SELECT uuid_generate_v4();
+    ```

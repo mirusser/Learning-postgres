@@ -17,7 +17,13 @@
   `\d <table>` (e.g. `\d person`)
 - show only tables:
   `\dt`
-- toggle expanded display (to see result vertically rather than horizontally):
+- toggle expanded display (to see results vertically rather than horizontally):
   `\x`
 - create file (and open in default text editor (notepad)) with last run query:
   `\e`
+- export to csv:
+  `\copy (<query>) to '<path>/<filename>.csv' delimiter ',' csv header;`
+- list functions:
+  `\df`
+- run query from file:
+  `\i <path>.sql`
