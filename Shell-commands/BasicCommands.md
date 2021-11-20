@@ -17,3 +17,7 @@
   `\d <table>` (e.g. `\d person`)
 - show only tables:
   `\dt`
+- toggle expanded display (to see result vertically rather than horizontally):
+  `\x`
+- create file (and open in default text editor (notepad)) with last run query:
+  `\e`
