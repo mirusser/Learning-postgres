@@ -1,9 +1,11 @@
 # Basic queries
 
 - Create database:
+
   ```sql
   CREATE DATABASE [database_name];
   ```
+  
 - Drop\delete database:
   ```sql
   DROP DATABASE [database_name];
