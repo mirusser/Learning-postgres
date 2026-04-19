@@ -1,11 +1,18 @@
 # SQL Field Guide
 
 ## Executive summary
-This field guide is optimized for a senior .NET backend interview in a financial-app setting, with PostgreSQL as the primary teaching database and SQL Server deltas called out where they matter. Because your CV shows both PostgreSQL and SQL Server work, including migration work, the guide is PostgreSQL-first but intentionally bilingual in database thinking. 
+The guide is PostgreSQL-first as the primary teaching database but intentionally bilingual in database thinking and SQL Server deltas called out where they matter. 
 
-Source priority in this guide is the official PostgreSQL documentation first, then official SQL Server documentation from Microsoft then official MySQL and Oracle Corporation documentation for cross-vendor triangulation, followed by authoritative practitioner references such as Use The Index, Luke and explain.depesz for plan-reading intuition. No specific engine version was supplied, so examples are chosen to be conceptually stable; PostgreSQL citations point to the current documentation stream and SQL Server notes use current Microsoft docs as of April 17, 2026. 
+Source priority in this guide is the official PostgreSQL documentation first, then official SQL Server documentation from Microsoft then official MySQL and Oracle Corporation documentation for cross-vendor triangulation, followed by authoritative practitioner references such as Use The Index, Luke and explain.depesz for plan-reading intuition. 
+No specific engine version was supplied, so examples are chosen to be conceptually stable; PostgreSQL citations point to the current documentation stream and SQL Server notes use current Microsoft docs as of April 17, 2026. 
 
-If you have only a few sentences to sound senior, aim for these themes: pick the weakest isolation level that still preserves the business invariant; keep transactions short and deterministic; index for your workload, not for wishful thinking; compare estimated versus actual rows in execution plans; normalize the source of truth, denormalize only with explicit ownership; and treat schema migration as a production change-management problem, not just a DDL problem. 
+General approach to writing SQL: 
+- pick the weakest isolation level that still preserves the business invariant; 
+- keep transactions short and deterministic; 
+- index for your workload, not for wishful thinking; 
+- compare estimated versus actual rows in execution plans;
+- normalize the source of truth, denormalize only with explicit ownership;
+- and treat schema migration as a production change-management problem, not just a [[DDL]] problem. 
 
 ---
 ## Joins, indexes, and execution-plan thinking
@@ -49,10 +56,9 @@ Another pitfall is misunderstanding composite indexes. Index column order matter
 
 A third pitfall is assuming that “index seek good, scan bad.” That is too simple. Both PostgreSQL and SQL Server note that scans can be cheaper when a large fraction of a table is needed, or when a sequential access pattern beats many random lookups. 
 
-### Interview-ready phrasing
 
 [[How to read an execution plan]]
-A strong answer sounds like this: “I think in terms of access path and cardinality. I want the optimizer to start from the most selective predicate it can estimate correctly, join in an order that keeps intermediate row counts small, and avoid unnecessary sorts or heap lookups. So I look at estimated versus actual rows, whether I got seek/index-only behavior or scan/lookup behavior, and whether the chosen join method matches the data shape.” 
+“I think in terms of access path and [[cardinality]]. I want the optimizer to start from the most selective predicate it can estimate correctly, join in an order that keeps intermediate row counts small, and avoid unnecessary sorts or heap lookups. So I look at estimated versus actual rows, whether I got seek/index-only behavior or scan/lookup behavior, and whether the chosen join method matches the data shape.” 
 
 ### Short PostgreSQL examples
 
@@ -112,11 +118,12 @@ A concise way to explain the three major join algorithms:
 - What is the practical difference between a covering index and a non-covering index?
 
 ---
-
 ## Transactions and isolation basics
 **Concise definition.** A transaction groups multiple operations into one atomic unit. Isolation level defines what one transaction is allowed to observe about concurrent transactions. PostgreSQL’s tutorial frames a transaction as bundling multiple steps into one all-or-nothing operation, while the PostgreSQL and SQL Server isolation docs describe the anomalies each isolation level permits or forbids. 
 
-**Why it matters in production and in financial systems.** Financial correctness often depends on preserving invariants under concurrency: no double-spend, no negative balance past policy, no duplicate posting, no inconsistent read across related state. Isolation is never “free”: stronger guarantees can reduce concurrency, increase retries, or increase version-store / monitoring overhead depending on engine. 
+**Why it matters in production?** 
+Correctness often depends on preserving invariants under concurrency: no double-spend, no negative balance past policy, no duplicate posting, no inconsistent read across related state. 
+Isolation is never “free”: stronger guarantees can reduce concurrency, increase retries, or increase version-store / monitoring overhead depending on engine. 
 
 ### Practical comparison
 
@@ -144,7 +151,7 @@ sequenceDiagram
     Note over T1,DB: Repeatable Read / Snapshot keeps a stable transaction view
 ```
 
-A senior-level explanation is that “statement snapshot” and “transaction snapshot” are different. In PostgreSQL Read Committed, each statement sees committed data as of statement start. In PostgreSQL Repeatable Read, the transaction sees a stable snapshot as of its first non-transaction-control statement. In SQL Server, default Read Committed usually means locking unless RCSI is enabled, while Snapshot gives a transaction-level versioned view. 
+ “Statement snapshot” and “Transaction snapshot” are different. In PostgreSQL Read Committed, each statement sees committed data as of statement start. In PostgreSQL Repeatable Read, the transaction sees a stable snapshot as of its first non-transaction-control statement. In SQL Server, default Read Committed usually means locking unless RCSI is enabled, while Snapshot gives a transaction-level versioned view. 
 
 ### Common pitfalls
 The first pitfall is assuming “Serializable means no retries.” In PostgreSQL, Serializable explicitly requires applications to be ready to retry when serialization failures occur. That is a feature, not a bug: the engine is refusing an execution that cannot be serialized safely. 

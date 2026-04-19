@@ -17,7 +17,6 @@ $$;
 You run it with `CALL procedure_name(...)`, not `SELECT`. A procedure does not return a normal value the way a function does, but it can send data back through `OUT` or `INOUT` parameters. PostgreSQL supports argument modes like `IN`, `OUT`, `INOUT`, and `VARIADIC`. ([postgresql.org](https://www.postgresql.org/docs/current/sql-createprocedure.html))
 
 Here is the simplest mental model:
-
 - `CREATE PROCEDURE` defines it.
 - `LANGUAGE plpgsql` means the body uses PostgreSQL’s procedural language.
 - `DECLARE` is optional and holds local variables.
@@ -116,7 +115,6 @@ CALL triple(5);
 That call returns a row containing the final value of `x`. In plain SQL, `CALL` returns a result row when the procedure has output parameters. ([postgresql.org](https://www.postgresql.org/docs/current/sql-call.html))
 
 Inside PL/pgSQL, you would call it like this:
-
 ```sql
 DO $$
 DECLARE
@@ -146,14 +144,11 @@ CALL insert_two_rows(1, 2);
 ```
 
 ### Procedure vs function
-
 A practical rule:
-
 - Use a **function** when you want something you can call in `SELECT`.
 - Use a **procedure** when you want to run an operation with `CALL`. PostgreSQL explicitly says functions are called with `SELECT`, while procedures are called with `CALL`. ([postgresql.org](https://www.postgresql.org/docs/current/sql-call.html))
 
 ### Transaction note
-
 Procedures are also the PostgreSQL object type tied to `CALL`, and transaction control has special rules: if you execute `CALL` inside an existing transaction block, the called procedure cannot run transaction-control statements such as `COMMIT` or `ROLLBACK`. ([postgresql.org](https://www.postgresql.org/docs/current/sql-call.html))
 
 A good starter template to copy is:
@@ -188,9 +183,7 @@ $$;
 ```
 
 And then:
-
 ```sql
 CALL procedure_name(1, 'new value');
 ```
 
-If you want, I can also show the same examples side by side for **procedure vs function** so the difference becomes obvious.

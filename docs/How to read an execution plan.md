@@ -73,7 +73,6 @@ Seq/Table Scan
 because the second shape touches much more data before reducing it.
 
 ---
-
 # Join methods: quick interpretation
 
 ## Nested Loop
@@ -84,7 +83,6 @@ Best when:
 Worry when:
 - outer input is much larger than estimated
 - inner probe is repeated many times expensively
-
 ## Hash Join
 Best when:
 - joining medium/large unsorted sets
@@ -93,7 +91,6 @@ Best when:
 Worry when:
 - hash input is much bigger than expected
 - memory pressure or spills appear
-
 ## Merge Join
 Best when:
 - both sides are already sorted on join keys
@@ -102,8 +99,7 @@ Best when:
 Worry when:
 - large sorts are added just to make it possible
 
-Interview line:
-> “I don’t label a join method good or bad in isolation; I check whether it matches the data volume, ordering, and access path.”
+> “Don’t label a join method good or bad in isolation;  check whether it matches the data volume, ordering, and access path.”
 
 ---
 # Scan vs seek vs index-only
@@ -134,7 +130,7 @@ If you see these, mention them:
 - “using an index” but still reading too much data
 
 ---
-# What to say when asked “How do you analyze a slow query?”
+# How do you analyze a slow query?
 
 Use this structure:
 1. **Check the actual execution plan**
