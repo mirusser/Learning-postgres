@@ -17,11 +17,19 @@ General approach to writing SQL:
 ---
 ## Joins, indexes, and execution-plan thinking
 
-**Concise definition.** A join combines rows from multiple relations according to a match condition. An index is a secondary structure that can reduce the cost of finding rows, joining rows, or satisfying ordering. An execution plan is the optimizer’s chosen sequence of scans, joins, filters, sorts, and aggregations used to answer the query. PostgreSQL’s docs describe join queries as combining rows from one table with rows from another, and both PostgreSQL and SQL Server emphasize that the optimizer selects access methods and join order based on schema and statistics. 
+**Concise definitions** 
+- A join combines rows from multiple relations according to a match condition. 
+- An index is a secondary structure that can reduce the cost of finding rows, joining rows, or satisfying ordering. 
+- An execution plan is the optimizer’s chosen sequence of scans, joins, filters, sorts, and aggregations used to answer the query. 
 
-**Why it matters in production and in financial systems.** In a banking or payments backend, many critical queries are join-heavy: account + customer + ledger + authorization + settlement + status tables. The difference between an index seek plus selective join and a broad scan plus hash-and-sort can be the difference between predictable millisecond latency and a noisy, blocking workload. Statistics quality is central because both PostgreSQL and SQL Server planners depend on row-count estimates to choose good plans. 
+PostgreSQL’s docs describe join queries as combining rows from one table with rows from another, and both PostgreSQL and SQL Server emphasize that the optimizer selects access methods and join order based on schema and statistics. 
 
-**Execution-plan thinking means** reading the plan as a tree and asking: what is the driving relation, how are rows accessed, where are row counts reduced, which join algorithm was chosen, and where do estimates differ from reality. PostgreSQL explicitly notes that plan-reading is an art, and SQL Server’s actual plan docs stress that actual plans add runtime information such as row counts, resource usage, and warnings. 
+**Why it matters in production** 
+Many critical queries are join-heavy: account + customer + ledger + authorization + settlement + status tables. The difference between an index seek plus selective join and a broad scan plus hash-and-sort can be the difference between predictable millisecond latency and a noisy, blocking workload. Statistics quality is central because both PostgreSQL and SQL Server planners depend on row-count estimates to choose good plans. 
+
+**Execution-plan thinking means** reading the plan as a tree and asking: what is the driving relation, how are rows accessed, where are row counts reduced, which join algorithm was chosen, and where do estimates differ from reality. 
+ Actual plans add runtime information such as row counts, resource usage, and warnings. 
+[[How to read an execution plan]]
 
 ```mermaid
 flowchart TD
@@ -93,16 +101,14 @@ WHERE customer_id = 42
 
 In PostgreSQL, `INCLUDE` adds non-key columns so an index-only scan can answer more queries without visiting the heap, subject to index-only scan rules. In SQL Server, included columns serve the same broad purpose for nonclustered covering indexes. 
 
-### Plan-reading explanation
 A concise way to explain the three major join algorithms:
-
 - **Nested loop**: good when the outer side is small and the inner side can be probed efficiently, often by index. 
 - **Hash join**: good for larger, unsorted inputs; build a hash table on the smaller side, probe with the other side. 
 - **Merge join**: good when both inputs are already sorted or can be sorted cheaply on the join keys. 
 
-### Recommended further reading
+### Recommended further reading 
 - PostgreSQL “Joins Between Tables” ;
-- PostgreSQL “Using EXPLAIN” ; 
+- [PostgreSQL “Using EXPLAIN”](https://www.postgresql.org/docs/current/using-explain.html)
 - PostgreSQL “Statistics Used by the Planner” ;
 - PostgreSQL “Indexes” chapter ; 
 - SQL Server “Query Processing Architecture Guide”;
@@ -119,7 +125,8 @@ A concise way to explain the three major join algorithms:
 
 ---
 ## Transactions and isolation basics
-**Concise definition.** A transaction groups multiple operations into one atomic unit. Isolation level defines what one transaction is allowed to observe about concurrent transactions. PostgreSQL’s tutorial frames a transaction as bundling multiple steps into one all-or-nothing operation, while the PostgreSQL and SQL Server isolation docs describe the anomalies each isolation level permits or forbids. 
+**Concise definition.** A transaction groups multiple operations into one atomic unit. Isolation level defines what one transaction is allowed to observe about concurrent transactions.
+PostgreSQL’s tutorial frames a transaction as bundling multiple steps into one all-or-nothing operation, while the PostgreSQL and SQL Server isolation docs describe the anomalies each isolation level permits or forbids. 
 
 **Why it matters in production?** 
 Correctness often depends on preserving invariants under concurrency: no double-spend, no negative balance past policy, no duplicate posting, no inconsistent read across related state. 
@@ -161,7 +168,7 @@ The second pitfall is treating SQL Server Read Committed as one fixed behavior. 
 The third pitfall is using a stronger isolation level than the business invariant demands. Sometimes explicit row locking on a small set of rows is cheaper than global Serializable. Other times, Serializable with retries is simpler and safer than hand-rolled lock choreography. PostgreSQL explicitly notes that Serializable can be a better performance choice than broad explicit locking in some environments. 
 
 ### Interview-ready phrasing
-A good answer sounds like this: “I choose isolation based on the invariant, not on habit. For ordinary read/write CRUD, Read Committed is often enough. For stable multi-statement reads, Repeatable Read or Snapshot may be better. For correctness-critical invariants across predicates, Serializable is the cleanest option, but I design the application to retry serialization failures.” 
+“I choose isolation based on the invariant, not on habit. For ordinary read/write CRUD, Read Committed is often enough. For stable multi-statement reads, Repeatable Read or Snapshot may be better. For correctness-critical invariants across predicates, Serializable is the cleanest option, but I design the application to retry serialization failures.” 
 
 ### Short PostgreSQL examples
 ```sql
@@ -194,7 +201,8 @@ WHERE account_id = 42;
 COMMIT;
 ```
 
-In PostgreSQL Read Committed, each statement sees a fresh committed snapshot. In SQL Server Read Committed, whether reads block depends heavily on whether RCSI is enabled. 
+In PostgreSQL Read Committed, each statement sees a fresh committed snapshot. 
+In SQL Server Read Committed, whether reads block depends heavily on whether RCSI is enabled. 
 
 ### Recommended further reading
 - PostgreSQL “Transactions” tutorial ;
@@ -212,9 +220,13 @@ In PostgreSQL Read Committed, each statement sees a fresh committed snapshot. In
 
 --- 
 ## Locking and deadlocks
-**Concise definition.** Locking is the engine’s way of coordinating conflicting access to shared resources. A deadlock is a cyclic wait: transaction A waits on a resource held by B, while B waits on a resource held by A. PostgreSQL and SQL Server both define deadlocks this way and both engines resolve them by aborting one participant. 
+**Concise definition.** 
+- Locking is the engine’s way of coordinating conflicting access to shared resources. 
+- A deadlock is a cyclic wait: transaction A waits on a resource held by B, while B waits on a resource held by A. 
 
-**Why it matters in production and in financial systems.** Locks are normal; long blocking chains and deadlocks are the problem. In money-moving systems, deadlocks often appear under peak load when multiple sessions update the same logical entities in inconsistent order. Short, deterministic transactions are a reliability feature, not just a performance best practice. 
+PostgreSQL and SQL Server both define deadlocks this way and both engines resolve them by aborting one participant. 
+
+**Why it matters in production.** Locks are normal; long blocking chains and deadlocks are the problem. Deadlocks often appear under peak load when multiple sessions update the same logical entities in inconsistent order. Short, deterministic transactions are a reliability feature, not just a performance best practice. 
 
 ```mermaid
 flowchart LR
@@ -289,7 +301,7 @@ This PostgreSQL row-locking pattern is useful for worker queues because it reduc
 
 **Concise definition.** Normalization organizes data so each fact is stored in one place, reducing redundancy and insert/update/delete anomalies. Microsoft describes normalization as organizing data into tables and relationships to eliminate redundancy and inconsistent dependency; Oracle’s data warehousing guide frames the goal as keeping each fact in one place to avoid anomalies. 
 
-**Why it matters in production and in financial systems.** For systems of record, normalization is about correctness first: a ledger entry, account, customer, or FX rate should have one authoritative representation. That reduces drift and simplifies auditing. In financial systems, the default posture should usually be “normalize the write model, denormalize the read model intentionally.” 
+**Why it matters in production** For systems of record, normalization is about correctness first: a ledger entry, account, customer, or FX rate should have one authoritative representation. That reduces drift and simplifies auditing. In financial systems, the default posture should usually be “normalize the write model, denormalize the read model intentionally.” 
 
 ```mermaid
 erDiagram
@@ -305,7 +317,7 @@ The tradeoff is simple: stricter normalization reduces redundancy and anomalies,
 A common pitfall is over-normalizing hot read paths until the application needs five or seven joins for a basic view. Another is under-normalizing the source of truth, which leads to duplicated balances, duplicated customer attributes, and silent drift. A senior answer distinguishes “authoritative data model” from “derived read model.”
 
 ### Interview-ready phrasing
-A strong answer sounds like this: “I prefer normalized writes for correctness and auditing, especially in transactional systems. If I denormalize, I want a clear owner, deterministic rebuild path, and a reason tied to a real workload—usually read performance, simplified query paths, or isolation of reporting from OLTP.” citeturn10view12turn10view13
+“I prefer normalized writes for correctness and auditing, especially in transactional systems. If I denormalize, I want a clear owner, deterministic rebuild path, and a reason tied to a real workload, usually read performance, simplified query paths, or isolation of reporting from OLTP.” 
 
 ### Short PostgreSQL examples
 
@@ -357,14 +369,15 @@ This second table is acceptable if you treat it as a derived projection rather t
 ## Writing efficient queries
 **Concise definition.** Writing efficient queries means shaping predicates, joins, ordering, and projection so the optimizer can choose low-cost access paths and avoid unnecessary work. In practice, that means selective predicates, narrow reads, correct indexes, realistic statistics, and avoiding query forms that hide useful predicates from the optimizer. 
 
-**Why it matters in production and in financial systems.** Even when the database is “fast enough” in QA, production workloads expose poor query shape through lock duration, CPU, memory grants, sort spills, and plan regressions. Efficient SQL reduces not only latency but also collateral damage to unrelated transactions. 
+**Why it matters in production** 
+Even when the database is “fast enough” in QA, production workloads expose poor query shape through lock duration, CPU, memory grants, sort spills, and plan regressions. Efficient SQL reduces not only latency but also collateral damage to unrelated transactions. 
 
 ### Common pitfalls
-The biggest pitfall is writing non-sargable predicates and then blaming the optimizer. PostgreSQL’s expression-index docs show that if you filter on `lower(col1)` and want index support, you may need an expression index on `lower(col1)`. SQL Server has the same broad concern via computed-column indexing and seekable predicates. citeturn28search0turn29search12turn18view0
+The biggest pitfall is writing non-sargable predicates and then blaming the optimizer. PostgreSQL’s expression-index docs show that if you filter on `lower(col1)` and want index support, you may need an expression index on `lower(col1)`. SQL Server has the same broad concern via computed-column indexing and seekable predicates. 
 
-Another pitfall is `SELECT *` on hot paths. Projection matters because index-only / covering behavior depends on whether all referenced columns are available from the index. PostgreSQL’s index-only-scan docs and SQL Server’s included-columns docs both make this clear. citeturn10view5turn30view0
+Another pitfall is `SELECT *` on hot paths. Projection matters because index-only / covering behavior depends on whether all referenced columns are available from the index. PostgreSQL’s index-only-scan docs and SQL Server’s included-columns docs both make this clear. 
 
-A third pitfall is designing indexes from one query in isolation. PostgreSQL recommends experimentation on real data and emphasizes checking actual workload index usage, while SQL Server recommends monitoring and removing unused indexes over time. citeturn12view2turn18view2
+A third pitfall is designing indexes from one query in isolation. PostgreSQL recommends experimentation on real data and emphasizes checking actual workload index usage, while SQL Server recommends monitoring and removing unused indexes over time. 
 
 ### Interview-ready phrasing
 A concise senior answer is: “I try to make my predicates seekable, project only needed columns, and line up my indexes with the actual `WHERE`, `JOIN`, and `ORDER BY` patterns of the workload. Then I verify with actual plans, because good SQL text can still get a bad plan if statistics are stale or cardinality estimates are wrong.” 
@@ -416,7 +429,7 @@ Better shape:
 Index Scan/Only Scan on selective predicate -> already ordered -> LIMIT
 ```
 
-That is not a law, but it is a useful interview heuristic. PostgreSQL explicitly notes that only B-tree indexes can produce sorted output and that indexes are most useful when only a few rows are fetched. citeturn28search1
+That is not a law, but it is a useful interview heuristic. PostgreSQL explicitly notes that only [[B-tree index]]es can produce sorted output and that indexes are most useful when only a few rows are fetched. 
 
 ### Recommended further reading
 - PostgreSQL “Indexes on Expressions” 
@@ -438,7 +451,8 @@ That is not a law, but it is a useful interview heuristic. PostgreSQL explicitly
 
 **Concise definition.** Schema evolution is the controlled change of database structure over time. Migrations are the operational mechanism by which those changes are applied safely across environments. In production, the hard part is rarely writing `ALTER TABLE`; it is minimizing lock impact, preserving compatibility, validating data, and having a rollback or retry strategy. 
 
-**Why it matters in production and in financial systems.** A poorly timed DDL change can block writes, invalidate assumptions, or leave a database in a partially migrated state. In regulated or high-availability systems, you need forward-only discipline, reviewable scripts, backfill plans, validation steps, and observability during rollout. PostgreSQL and SQL Server both provide mechanisms for lower-disruption changes, but the details differ. 
+**Why it matters in production.** 
+A poorly timed [[DDL]] change can block writes, invalidate assumptions, or leave a database in a partially migrated state. In regulated or high-availability systems, you need forward-only discipline, reviewable scripts, backfill plans, validation steps, and observability during rollout. PostgreSQL and SQL Server both provide mechanisms for lower-disruption changes, but the details differ. 
 
 ### Practical comparison
 
@@ -471,8 +485,7 @@ The second pitfall is treating migration tooling as a substitute for review. Sql
 The third pitfall is ignoring upgrade path differences. PostgreSQL major-version upgrades can use `pg_upgrade` for fast in-place upgrades or logical replication for very low downtime; `pg_dump`/`pg_restore` is flexible but more disruptive than binary upgrade or replication-based cutover. 
 
 ### Interview-ready phrasing
-
-A strong answer sounds like this: “I separate schema design from change rollout. In production I prefer additive, backward-compatible migrations first, then backfill and validation, then code cutover, then cleanup. I choose mechanisms based on lock impact—like `NOT VALID` plus `VALIDATE CONSTRAINT` or concurrent / online index builds—and I prefer reviewable SQL scripts or deployment plans over blind push-button deployment.” 
+“I separate schema design from change rollout. In production I prefer additive, backward-compatible migrations first, then backfill and validation, then code cutover, then cleanup. I choose mechanisms based on lock impact—like `NOT VALID` plus `VALIDATE CONSTRAINT` or concurrent / online index builds—and I prefer reviewable SQL scripts or deployment plans over blind push-button deployment.” 
 
 ### Short PostgreSQL examples
 ```sql
@@ -512,7 +525,6 @@ This is the PostgreSQL pattern for creating a uniqueness guarantee without block
 - EF Core “Applying Migrations” 
 
 ### Interview questions to be ready for
-
 - How would you add a foreign key to a large hot table safely?
 - Why is `CREATE INDEX CONCURRENTLY` useful, and what are its caveats?
 - What is the expand–migrate–contract pattern?
