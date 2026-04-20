@@ -1,10 +1,7 @@
 # SQL Field Guide
 
-## Executive summary
+##  Summary
 The guide is PostgreSQL-first as the primary teaching database but intentionally bilingual in database thinking and SQL Server deltas called out where they matter. 
-
-Source priority in this guide is the official PostgreSQL documentation first, then official SQL Server documentation from Microsoft then official MySQL and Oracle Corporation documentation for cross-vendor triangulation, followed by authoritative practitioner references such as Use The Index, Luke and explain.depesz for plan-reading intuition. 
-No specific engine version was supplied, so examples are chosen to be conceptually stable; PostgreSQL citations point to the current documentation stream and SQL Server notes use current Microsoft docs as of April 17, 2026. 
 
 General approach to writing SQL: 
 - pick the weakest isolation level that still preserves the business invariant; 
