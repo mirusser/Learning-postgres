@@ -1,703 +1,580 @@
-## What a join is
-A **join** combines rows from two tables based on a condition.
+# Joins in PostgreSQL
 
-Example tables:
-```sql
-customers  
----------  
-id | name  
-1  | Alice  
-2  | Bob  
-3  | Carol  
-```
-  
-```sql
-orders  
-------  
-id | customer_id | total  
-10 | 1           | 50  
-11 | 1           | 80  
-12 | 2           | 30
-```
+## Summary
+A join combines rows from two row sources.
 
-A typical join condition is:
+Most joins combine rows based on a match condition such as:
+
 ```sql
 customers.id = orders.customer_id
 ```
 
----
-# 1. INNER JOIN
-An **INNER JOIN** returns only rows where the join condition matches in both tables.
+`CROSS JOIN` is the exception: it returns every possible combination and has no match condition.
+
+## Join Overview
+
+| Join type | Rows preserved | What happens to unmatched rows | Typical use |
+| --- | --- | --- | --- |
+| `INNER JOIN` | Only matching rows | Unmatched rows are removed | Return only rows that match on both sides |
+| `LEFT JOIN` | All rows from the left side | Right-side columns become `NULL` | Keep all parent rows, even without children |
+| `RIGHT JOIN` | All rows from the right side | Left-side columns become `NULL` | Same logic as `LEFT JOIN`, but written from the other side |
+| `FULL JOIN` | All rows from both sides | Missing columns on either side become `NULL` | Find matches plus both kinds of non-matches |
+| `CROSS JOIN` | Every combination | No matching step | Generate combinations deliberately |
+
+## Base Example Tables
+
+```text
+customers
+---------
+id | name
+1  | Alice
+2  | Bob
+3  | Carol
+```
+
+```text
+orders
+------
+id | customer_id | total
+10 | 1           | 50
+11 | 1           | 80
+12 | 2           | 30
+```
+
+Common join condition:
+
 ```sql
-SELECT c.name, o.id, o.total  
-FROM customers c  
-INNER JOIN orders o  
+customers.id = orders.customer_id
+```
+
+For `RIGHT JOIN` and `FULL JOIN`, this document adds one unmatched order:
+
+```text
+id | customer_id | total
+13 | 99          | 20
+```
+
+## Core Join Types
+
+### `INNER JOIN`
+An `INNER JOIN` returns only rows where the join condition matches on both sides.
+
+```sql
+SELECT c.name, o.id, o.total
+FROM customers c
+INNER JOIN orders o
   ON c.id = o.customer_id;
 ```
 
 Result:
-```
-Alice | 10 | 50  
-Alice | 11 | 80  
+
+```text
+Alice | 10 | 50
+Alice | 11 | 80
 Bob   | 12 | 30
 ```
-Carol is missing because she has no matching order.
-### Mental model
-“Keep only the intersection.”
-### Notes
-- `JOIN` by itself usually means `INNER JOIN`
-- most commonly used join
 
----
-# 2. LEFT JOIN / LEFT OUTER JOIN
-A **LEFT JOIN** returns:
+Mental model: keep only the intersection.
+
+Notes:
+- `JOIN` by itself usually means `INNER JOIN`
+- this is the most common join
+
+### `LEFT JOIN` / `LEFT OUTER JOIN`
+A `LEFT JOIN` returns:
 - all rows from the left table
 - matching rows from the right table
-- `NULL`s for right-table columns when there is no match
+- `NULL` for right-side columns when no match exists
 
 ```sql
-SELECT c.name, o.id, o.total  
-FROM customers c  
-LEFT JOIN orders o  
+SELECT c.name, o.id, o.total
+FROM customers c
+LEFT JOIN orders o
   ON c.id = o.customer_id;
 ```
 
 Result:
-```
-Alice | 10 | 50  
-Alice | 11 | 80  
-Bob   | 12 | 30  
+
+```text
+Alice | 10   | 50
+Alice | 11   | 80
+Bob   | 12   | 30
 Carol | NULL | NULL
 ```
-Carol appears because all rows from `customers` are preserved.
-### Mental model
-“Keep everything from the left, match what you can from the right.”
 
-###  Notes
-- `LEFT JOIN` vs `LEFT OUTER JOIN`
-Same thing. `OUTER` is optional.
+Mental model: keep everything from the left, match what you can from the right.
 
----
-# 3. RIGHT JOIN / RIGHT OUTER JOIN
-A **RIGHT JOIN** is the mirror image of a left join.
+Note: `LEFT JOIN` and `LEFT OUTER JOIN` mean the same thing. `OUTER` is optional.
+
+### `RIGHT JOIN` / `RIGHT OUTER JOIN`
+A `RIGHT JOIN` is the mirror image of a `LEFT JOIN`.
 
 It returns:
 - all rows from the right table
 - matching rows from the left table
-- `NULL`s for left-table columns when there is no match
+- `NULL` for left-side columns when no match exists
 
-Example with an unmatched order:
-```
-orders  
-------  
-id | customer_id | total  
-10 | 1           | 50  
-11 | 1           | 80  
-12 | 2           | 30  
-13 | 99          | 20
-```
-
-Query:
 ```sql
-SELECT c.name, o.id, o.total  
-FROM customers c  
-RIGHT JOIN orders o  
+SELECT c.name, o.id, o.total
+FROM customers c
+RIGHT JOIN orders o
   ON c.id = o.customer_id;
 ```
 
 Result:
-```
-Alice | 10 | 50  
-Alice | 11 | 80  
-Bob   | 12 | 30  
+
+```text
+Alice | 10 | 50
+Alice | 11 | 80
+Bob   | 12 | 30
 NULL  | 13 | 20
 ```
 
-### Mental model
-“Keep everything from the right, match what you can from the left.”
+Mental model: keep everything from the right, match what you can from the left.
 
-### Practical note
-People often avoid `RIGHT JOIN` because the same logic can usually be written more clearly as a `LEFT JOIN` by swapping table order.
+Practical note: many teams prefer rewriting a `RIGHT JOIN` as a `LEFT JOIN` by swapping table order.
 
----
-# 4. FULL JOIN / FULL OUTER JOIN
-A **FULL JOIN** returns:
+### `FULL JOIN` / `FULL OUTER JOIN`
+A `FULL JOIN` returns:
 - all matching rows
-- all unmatched rows from the left table
-- all unmatched rows from the right table
+- unmatched rows from the left table
+- unmatched rows from the right table
 
-Where no match exists, the missing side is filled with `NULL`s.
+Missing values are filled with `NULL`.
 
 ```sql
-SELECT c.name, o.id, o.total  
-FROM customers c  
-FULL JOIN orders o  
+SELECT c.name, o.id, o.total
+FROM customers c
+FULL JOIN orders o
   ON c.id = o.customer_id;
 ```
 
-Using the unmatched order `customer_id = 99`, result:
-```
-Alice | 10   | 50  
-Alice | 11   | 80  
-Bob   | 12   | 30  
-Carol | NULL | NULL  
+Result:
+
+```text
+Alice | 10   | 50
+Alice | 11   | 80
+Bob   | 12   | 30
+Carol | NULL | NULL
 NULL  | 13   | 20
 ```
 
-### Mental model
-“Keep everything from both sides.”
+Mental model: keep everything from both sides.
 
----
-# 5. CROSS JOIN
-A **CROSS JOIN** returns the Cartesian product.
+### `CROSS JOIN`
+A `CROSS JOIN` returns the Cartesian product.
 
 That means:
-- every row from the first table
-- combined with every row from the second table
+- every row from the first source
+- combined with every row from the second source
 
-If table A has 3 rows and table B has 4 rows, the result has 12 rows.
+If one source has 3 rows and the other has 4 rows, the result has 12 rows.
 
 Example:
-```
-colors  
-------  
-red  
-blue  
+
+```text
+colors
+------
+red
+blue
 ```
 
-```
-sizes  
------  
-S  
-M  
+```text
+sizes
+-----
+S
+M
 L
-```  
+```
 
-Query:
 ```sql
-SELECT *  
-FROM colors  
+SELECT *
+FROM colors
 CROSS JOIN sizes;
 ```
 
 Result:
-```
-red  | S  
-red  | M  
-red  | L  
-blue | S  
-blue | M  
+
+```text
+red  | S
+red  | M
+red  | L
+blue | S
+blue | M
 blue | L
-
 ```
 
-### Mental model
-“All combinations.”
+Mental model: all combinations.
 
-### Important
-No `ON` clause is used with a normal cross join.
+Important:
+- a normal `CROSS JOIN` has no `ON` clause
+- `FROM a CROSS JOIN b` is equivalent to `FROM a INNER JOIN b ON TRUE`
+- `FROM a, b` is also equivalent to a cross join, but only in simple cases
 
-You can also accidentally create a cross join by forgetting a join condition:
-```sql
-SELECT *  
-FROM a, b;
-```
+Watch out: when more than two tables appear, comma syntax and explicit `JOIN` do not always mean the same thing, because `JOIN` binds more tightly than comma syntax.
 
-or
-```sql
-SELECT *  
-FROM a  
-JOIN b ON TRUE;
-```
+## Related Patterns and Syntax
 
-That may explode row counts.
-
----
-# 6. SELF JOIN
-A **self join** is not a separate SQL keyword. It is a pattern: a table joined to itself.
+### Self Join
+A self join is not a separate SQL keyword. It is a pattern: a table joined to itself.
 
 Useful for:
-- parent/child relationships
-- employee/manager relationships
+- parent-child relationships
+- employee-manager relationships
 - comparing rows within one table
 
-Example:
-```sql
-employees  
----------  
-id | name  | manager_id  
-1  | CEO   | NULL  
-2  | Ann   | 1  
-3  | Ben   | 1  
-4  | Cara  | 2
+```text
+employees
+---------
+id | name | manager_id
+1  | CEO  | NULL
+2  | Ann  | 1
+3  | Ben  | 1
+4  | Cara | 2
 ```
 
-
-Query:
 ```sql
-SELECT e.name AS employee,  
-       m.name AS manager  
-FROM employees e  
-LEFT JOIN employees m  
+SELECT e.name AS employee,
+       m.name AS manager
+FROM employees e
+LEFT JOIN employees m
   ON e.manager_id = m.id;
 ```
 
 Result:
-```
-CEO  | NULL  
-Ann  | CEO  
-Ben  | CEO  
+
+```text
+CEO  | NULL
+Ann  | CEO
+Ben  | CEO
 Cara | Ann
 ```
 
-### Mental model
-“Treat one table as if it were two roles.”
-
 Aliases are essential in self joins.
 
----
+### `JOIN ... USING`
+`USING` is not a different join type. It is join syntax.
 
-# 7. NATURAL JOIN
-A **NATURAL JOIN** automatically joins tables using all columns with the same names in both tables.
+Use it when both sides have the same join-column name.
+
+```sql
+SELECT *
+FROM table_a
+JOIN table_b
+USING (id);
+```
+
+This is shorthand for:
+
+```sql
+ON table_a.id = table_b.id
+```
+
+Special behavior: the joined column appears only once in the output.
 
 Example:
+
+```text
+table_a
+-------
+id | val_a
+```
+
+```text
+table_b
+-------
+id | val_b
+```
+
+Output columns:
+
+```text
+id | val_a | val_b
+```
+
+`USING` is a good fit when the common key has the same name on both sides.
+
+### `NATURAL JOIN`
+A `NATURAL JOIN` automatically joins on every column name shared by both inputs.
+
 ```sql
-SELECT *  
-FROM a  
+SELECT *
+FROM a
 NATURAL JOIN b;
 ```
 
-If both tables have columns named `id` and `code`, PostgreSQL joins on both.
-### Why this is risky
-It can be convenient, but it is often discouraged because:
+If both tables have columns named `id` and `code`, PostgreSQL joins on both columns.
+
+Why this is risky:
 - the join condition is implicit
 - schema changes can silently change query behavior
 - it is easy to join on more columns than intended
 
-Most production SQL prefers explicit joins:
-```sql
-SELECT *  
-FROM a  
-JOIN b  
-  ON a.id = b.id;
-```
-### Important
-`NATURAL JOIN` can combine with join types:
+PostgreSQL-specific caveat: if the two inputs share no column names, `NATURAL JOIN` behaves like `CROSS JOIN`.
+
+It can combine with join families:
 - `NATURAL JOIN`
 - `NATURAL LEFT JOIN`
 - `NATURAL RIGHT JOIN`
 - `NATURAL FULL JOIN`
 
-But explicit `ON` conditions are usually safer.
+Most production SQL prefers explicit `ON` or `USING` clauses.
 
----
-# 8. JOIN ... USING
-`USING` is not a different join type either, but a join syntax.
-
-Instead of:
-```sql
-SELECT *  
-FROM customers c  
-JOIN orders o  
-  ON c.id = o.customer_id;
-```
-
-You use `USING` when both join columns have the same name:
-```sql
-SELECT *  
-FROM a  
-JOIN b  
-  USING (id);
-```
-
-This means:
-```
-ON a.id = b.id
-```
-
-### Special behavior
-With `USING`, the joined column appears only once in the output.
-
-Example:
-```
-table_a  
--------  
-id | val_a  
-```
-
-```
-table_b  
--------  
-id | val_b
-```
-
-Query:
-```sql
-SELECT *  
-FROM table_a  
-JOIN table_b USING (id);
-```
-
-Output columns:
-```
-id | val_a | val_b
-```
-instead of two separate `id` columns.
-
-### Good use case
-- Clean syntax when the common key has the same name in both tables.
-
----
-# 9. LATERAL JOIN
-A **LATERAL** join lets a subquery on the right side refer to columns from the left side.
+### `LATERAL`
+`LATERAL` lets a subquery on the right side refer to columns from row sources on the left side.
 
 Example: get the latest order per customer.
 
 ```sql
-SELECT c.name, o.id, o.total  
-FROM customers c  
-LEFT JOIN LATERAL (  
-    SELECT id, total  
-    FROM orders o  
-    WHERE o.customer_id = c.id  
-    ORDER BY id DESC  
-    LIMIT 1  
+SELECT c.name, o.id, o.total
+FROM customers c
+LEFT JOIN LATERAL (
+    SELECT id, total
+    FROM orders o
+    WHERE o.customer_id = c.id
+    ORDER BY id DESC
+    LIMIT 1
 ) o ON TRUE;
-
 ```
-The subquery can use `c.id`, which comes from the left table.
 
-### Why lateral is useful
-It lets the right-side subquery run “per row” of the left table.
+The subquery can use `c.id`, which comes from the left side.
 
 Common uses:
-- top N related rows per row
+- top N related rows per left row
 - correlated derived tables
 - unpacking arrays or JSON per row
 
-### Mental model
-“For each left row, run this right-side query using left-row values.”
+Mental model: for each left row, run this right-side query with left-row values.
 
----
-# 10. SEMI JOIN
-PostgreSQL does not have a `SEMI JOIN` keyword in normal SQL syntax, but the concept exists.
+### Semi Join
+PostgreSQL does not have a `SEMI JOIN` keyword in normal SQL syntax, but the concept is important.
 
-A semi join returns left-table rows that have at least one match in the right table, without duplicating left rows for multiple matches.
+A semi join returns left-side rows that have at least one match on the right, without duplicating the left row for multiple matches.
 
-Usually written with `EXISTS` or `IN`.
+Usually write it with `EXISTS` or sometimes `IN`.
 
-Example:
 ```sql
-SELECT c.*  
-FROM customers c  
-WHERE EXISTS (  
-    SELECT 1  
-    FROM orders o  
-    WHERE o.customer_id = c.id  
+SELECT c.*
+FROM customers c
+WHERE EXISTS (
+    SELECT 1
+    FROM orders o
+    WHERE o.customer_id = c.id
 );
 ```
 
 Result:
-```
-Alice  
-Bob
-```
-Carol is excluded because she has no order.
 
-### Why not use INNER JOIN here?
+```text
+1 | Alice
+2 | Bob
+```
 
-Because this:
+Why not use `INNER JOIN` here?
+
 ```sql
-SELECT c.*  
-FROM customers c  
-JOIN orders o  
+SELECT c.*
+FROM customers c
+JOIN orders o
   ON c.id = o.customer_id;
 ```
-would duplicate Alice if she has multiple orders.
 
-`EXISTS` expresses the intent better:  
-“return customers that have at least one order.”
+That would duplicate Alice because she has multiple orders. `EXISTS` expresses the intent more clearly: return customers that have at least one order.
 
----
-# 11. ANTI JOIN
-Again, not a keyword in standard PostgreSQL SQL syntax, but a very important concept.
+### Anti Join
+An anti join returns left-side rows that have no match on the right.
 
-An anti join returns rows from the left table that have **no** match in the right table.
+Usually write it with `NOT EXISTS`.
 
-Usually written with `NOT EXISTS`.
 ```sql
-SELECT c.*  
-FROM customers c  
-WHERE NOT EXISTS (  
-    SELECT 1  
-    FROM orders o  
-    WHERE o.customer_id = c.id  
+SELECT c.*
+FROM customers c
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM orders o
+    WHERE o.customer_id = c.id
 );
 ```
 
 Result:
-```
-Carol
+
+```text
+3 | Carol
 ```
 
-### Left join equivalent
+Equivalent pattern:
 
-You may also see:
 ```sql
-SELECT c.*  
-FROM customers c  
-LEFT JOIN orders o  
-  ON c.id = o.customer_id  
+SELECT c.*
+FROM customers c
+LEFT JOIN orders o
+  ON c.id = o.customer_id
 WHERE o.id IS NULL;
 ```
-This also finds customers with no orders.
 
-### Best practice
-`NOT EXISTS` is often clearer and safer than `NOT IN`, especially with `NULL`s.
+Best practice: `NOT EXISTS` is usually clearer and safer than `NOT IN`, especially when `NULL` values are involved.
 
----
-# 12. Equi join
-An **equi join** means the join condition uses equality.
+### Equi Join
+An equi join uses equality in the join condition.
 
-Example:
 ```sql
-SELECT *  
-FROM a  
-JOIN b  
+SELECT *
+FROM a
+JOIN b
   ON a.id = b.id;
 ```
 
-This is not a separate SQL join keyword. It is just a category.
+This is a category, not a separate SQL keyword.
 
-Most joins in real schemas are equi joins.
+### Non-Equi Join
+A non-equi join uses a condition other than equality, such as `<`, `>`, `<=`, `>=`, or `BETWEEN`.
 
----
-# 13. Non-equi join
-A **non-equi join** uses some condition other than equality, such as `<`, `>`, `BETWEEN`, or ranges.
-
-Example:
 ```sql
-SELECT *  
-FROM events e  
-JOIN pricing p  
+SELECT *
+FROM events e
+JOIN pricing p
   ON e.event_date BETWEEN p.start_date AND p.end_date;
 ```
-This joins rows based on a range match rather than exact equality.
 
-Useful for:
+Common uses:
 - temporal joins
-- range tables
-- bucket lookups
+- range lookups
+- bucketing
 - effective-dated dimensions
 
----
-# Visual summary
+## Join Conditions: `ON` vs `USING` vs `WHERE`
 
-Suppose:
+### `ON`
+Most explicit and most flexible.
 
-Left table:
-```
-id  
---  
-1  
-2  
-3
-```
-
-Right table:
-```
-id  
---  
-2  
-3  
-4
-```
-
-Then:
-## INNER JOIN
-Only matches:
-```
-2  
-3
-```
-## LEFT JOIN
-All left plus matches:
-```
-1  
-2  
-3
-```
-with right side `NULL` for 1.
-## RIGHT JOIN
-All right plus matches:
-```
-2  
-3  
-4
-```
-with left side `NULL` for 4.
-
-## FULL JOIN
-Everything:
-```
-1  
-2  
-3  
-4
-```
-with `NULL`s where no match exists.
-## CROSS JOIN
-All combinations:
-```
-1-2  
-1-3  
-1-4  
-2-2  
-2-3  
-2-4  
-3-2  
-3-3  
-3-4
-```
-
----
-# Join conditions: ON vs USING vs WHERE
-
-## `ON`
-
-Most explicit and flexible:
 ```sql
-SELECT *  
-FROM a  
-JOIN b  
+SELECT *
+FROM a
+JOIN b
   ON a.x = b.y;
 ```
 
-## `USING`
-Only when column names are the same:
+### `USING`
+Use when both sides share the same column name.
+
 ```sql
-SELECT *  
-FROM a  
+SELECT *
+FROM a
 JOIN b USING (id);
 ```
 
-## `WHERE`
-Old-style syntax:
+### `WHERE`
+Old-style inner join syntax:
+
 ```sql
-SELECT *  
-FROM a, b  
+SELECT *
+FROM a, b
 WHERE a.id = b.id;
 ```
 
-This works for inner joins, but is generally less clear and easier to get wrong. Modern SQL prefers explicit `JOIN ... ON`.
+This works for inner joins, but explicit `JOIN ... ON` is usually clearer and safer.
 
----
-# Important PostgreSQL practical notes
+## PostgreSQL Practical Notes
 
-## 1. Joins can multiply rows
+### Joins Can Multiply Rows
 If one customer has many orders, joining customers to orders returns multiple rows for that customer.
 
-This is expected.
+That is normal join behavior.
 
-## 2. Outer join filtering trap
+### Outer Join Filtering Trap
+This query looks like a `LEFT JOIN`:
 
-This is very common:
 ```sql
-SELECT *  
-FROM customers c  
-LEFT JOIN orders o  
-  ON c.id = o.customer_id  
+SELECT *
+FROM customers c
+LEFT JOIN orders o
+  ON c.id = o.customer_id
 WHERE o.total > 50;
 ```
 
-This can effectively turn the left join into an inner join, because rows with no order have `NULL` in `o.total`, and `NULL > 50` is not true.
+But it effectively behaves like an inner join for that filter, because rows with no order have `NULL` in `o.total`, and `NULL > 50` is not true.
 
-If you want to preserve all customers and only join qualifying orders, put the condition in `ON`:
+If you want to preserve all customers and only match qualifying orders, move the filter into the join condition:
+
 ```sql
-SELECT *  
-FROM customers c  
-LEFT JOIN orders o  
-  ON c.id = o.customer_id  
+SELECT *
+FROM customers c
+LEFT JOIN orders o
+  ON c.id = o.customer_id
  AND o.total > 50;
 ```
-That is a very important distinction.
 
-## 3. `NULL` does not equal `NULL`
-Normal equality joins do not match `NULL` values.
-```
+### `NULL` Does Not Equal `NULL`
+Standard equality joins do not match two `NULL` values.
+
+```sql
 ON a.col = b.col
 ```
-does not match rows where both are `NULL`.
 
-For null-safe comparison in PostgreSQL, use:
+That does not match rows where both sides are `NULL`.
+
+For a null-safe comparison in PostgreSQL, use:
+
 ```sql
 ON a.col IS NOT DISTINCT FROM b.col
 ```
 
----
-# PostgreSQL execution side: physical join algorithms
+## PostgreSQL Execution Side: Physical Join Algorithms
 
-These are not SQL join types, but PostgreSQL may implement a join using one of these strategies:
-- **Nested Loop Join**
-- **Hash Join**
-- **Merge Join**
+These are planner strategies, not logical SQL join types. PostgreSQL may execute a logical join using one of these physical methods:
 
-These are execution methods chosen by the planner, not something you usually write directly.
-## Nested Loop
-For each row in one input, scan matching rows in the other.
+- `Nested Loop`
+- `Hash Join`
+- `Merge Join`
 
-Good for:
-- small inputs
-- indexed lookups
+You usually do not write these directly. You see them in `EXPLAIN` output.
 
-## Hash Join
-Build a hash table from one side, probe from the other.
+### `Nested Loop`
+For each row from one input, PostgreSQL probes the other input for matches.
 
-Good for:
+Often good for:
+- a small outer input
+- indexed lookups on the inner input
+
+### `Hash Join`
+PostgreSQL builds a hash table from one input, then probes it with rows from the other input.
+
+Often good for:
 - equality joins
-- medium/large sets
+- medium to large unsorted inputs
 
-## Merge Join
-Sort both sides, then merge them.
+### `Merge Join`
+PostgreSQL reads both inputs in join-key order and merges them.
 
-Good for:
-- sorted inputs
-- range of larger join tasks, especially equi joins
+Often good for:
+- inputs already sorted on the join key
+- inputs that can be sorted cheaply
 
-These are about performance, not SQL semantics.
+These affect performance, not query meaning.
 
----
-# Best practices
-Use:
-- `INNER JOIN` when you only want matches
-- `LEFT JOIN` when you must preserve all left rows
-- `EXISTS` for semi-join logic
-- `NOT EXISTS` for anti-join logic
-- explicit `ON` conditions for clarity
+## Compact Cheat Sheet
 
-Avoid overusing:
-- `NATURAL JOIN`
-- old comma-join syntax
-- `RIGHT JOIN` when a `LEFT JOIN` rewrite is clearer
+### Main SQL Join Types
+- `INNER JOIN`: only matching rows
+- `LEFT JOIN`: all left rows, matched right rows, `NULL` for missing right rows
+- `RIGHT JOIN`: all right rows, matched left rows, `NULL` for missing left rows
+- `FULL JOIN`: all matches plus all non-matches from both sides
+- `CROSS JOIN`: every possible combination
 
----
-# Compact cheat sheet
-
-## Main SQL join types
-- `INNER JOIN`
-- `LEFT [OUTER] JOIN`
-- `RIGHT [OUTER] JOIN`
-- `FULL [OUTER] JOIN`
-- `CROSS JOIN`
-## Important patterns
+### Important Patterns
 - self join
-- lateral join
+- `LATERAL`
 - semi join via `EXISTS`
 - anti join via `NOT EXISTS`
-## Syntax helpers
-- `ON`
-- `USING`
-- `NATURAL`
-## Conceptual categories
-- equi join
-- non-equi join
+
+### Syntax Helpers
+- `ON`: most explicit and flexible
+- `USING`: shorthand when join column names match
+- `NATURAL`: shorthand for all shared column names, but risky
+
+### Practical Defaults
+- use `INNER JOIN` when you only want matches
+- use `LEFT JOIN` when you must preserve left-side rows
+- use `EXISTS` for semi-join logic
+- use `NOT EXISTS` for anti-join logic
+- prefer explicit join conditions over `NATURAL JOIN` and old comma syntax
