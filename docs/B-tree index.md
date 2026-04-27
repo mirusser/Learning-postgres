@@ -1,5 +1,8 @@
 **B-tree index** is the standard **balanced tree** index structure. 
-PostgreSQL describes it as a _multi-way balanced tree_; values are stored in sorted order, internal pages guide navigation, and leaf pages contain index tuples that point to table rows. 
+
+PostgreSQL describes it as a:
+_multi-way balanced tree_; 
+values are stored in sorted order, internal pages guide navigation, and leaf pages contain index tuples that point to table rows. 
 
 It works for data types that can be put into a well-defined linear order.
 
@@ -12,17 +15,21 @@ root
  └─ internal page  
      ├─ leaf page: [30] [31] [40]  
      └─ leaf page: [45] [50] [60]
-
+...
 ```
 
 The point is not “tree” by itself, but **sorted tree**. 
-Because entries are ordered, PostgreSQL can jump to the relevant part of the index and then scan forward through the matching range, which is why B-trees are good for `=`, `<`, `<=`, `>=`, `>`, and related predicates like `BETWEEN` and `IN`. B-tree is also the only PostgreSQL index type that can directly produce sorted output for `ORDER BY`.
+Because entries are ordered, PostgreSQL can jump to the relevant part of the index and then scan forward through the matching range, which is why B-trees are good for  comparison operations: 
+`=`, `<`, `<=`, `>=`, `>`, 
+and related predicates like `BETWEEN` and `IN`. 
+B-tree is also the only PostgreSQL index type that can directly produce sorted output for `ORDER BY`.
 
 ## What a B-tree index is good for
 
 Typical examples:
 ```SQL
 CREATE INDEX idx_users_email ON users (email);  
+
 CREATE INDEX idx_orders_created_at ON orders (created_at);
 ```
 
@@ -158,7 +165,8 @@ So `INCLUDE` does **not** make the index a 4-column concatenated key. It is stil
 
 ## What skip scan means here
 
-PostgreSQL’s multicolumn docs note that for a B-tree index it may apply **skip scan**. That means if you have an index like `(x, y)` and the query is only `WHERE y = 7700`, PostgreSQL may internally perform repeated searches over possible `x` values if it expects that to skip most of the index cheaply. But this is conditional and only useful when the missing leading column has relatively few distinct values.
+PostgreSQL’s multicolumn docs note that for a B-tree index it may apply **skip scan**. 
+That means if you have an index like `(x, y)` and the query is only `WHERE y = 7700`, PostgreSQL may internally perform repeated searches over possible `x` values if it expects that to skip most of the index cheaply. But this is conditional and only useful when the missing leading column has relatively few distinct values.
 
 So the modern, precise version of the “leftmost prefix rule” is:
 
@@ -167,7 +175,12 @@ So the modern, precise version of the “leftmost prefix rule” is:
 
 ## Best concise interview answer
 
-> “A B-tree index in PostgreSQL is the standard balanced, sorted index structure for values with a defined order. It is good for equality, range, and ordered retrieval. A ‘concatenated B-tree index’ is what PostgreSQL calls a multicolumn B-tree index: the key is ordered lexicographically, first by the first column, then the second, and so on. That’s why leftmost column order matters so much for which queries can narrow the scan efficiently.”
+> “A B-tree index in PostgreSQL is the standard balanced, sorted index structure for values with a defined order. 
+> 
+> It is good for equality, range, and ordered retrieval. 
+> 
+> A ‘concatenated B-tree index’ is what PostgreSQL calls a multicolumn B-tree index: the key is ordered lexicographically, first by the first column, then the second, and so on. 
+> That’s why leftmost column order matters so much for which queries can narrow the scan efficiently.”
 
 ## Super short version
 ```

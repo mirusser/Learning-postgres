@@ -22,10 +22,15 @@ General approach to writing SQL:
 PostgreSQL’s docs describe join queries as combining rows from one table with rows from another, and both PostgreSQL and SQL Server emphasize that the optimizer selects access methods and join order based on schema and statistics. 
 
 **Why it matters in production** 
-Many critical queries are join-heavy: account + customer + ledger + authorization + settlement + status tables. The difference between an index seek plus selective join and a broad scan plus hash-and-sort can be the difference between predictable millisecond latency and a noisy, blocking workload. Statistics quality is central because both PostgreSQL and SQL Server planners depend on row-count estimates to choose good plans. 
+Many critical queries are join-heavy e.g. account + customer + ledger + authorization + settlement + status tables. 
+
+The difference between an index seek plus selective join and a broad scan plus hash-and-sort can be the difference between predictable millisecond latency and a noisy, blocking workload. 
+
+Statistics quality is central because both PostgreSQL and SQL Server planners depend on row-count estimates to choose good plans. 
 
 **Execution-plan thinking means** reading the plan as a tree and asking: what is the driving relation, how are rows accessed, where are row counts reduced, which join algorithm was chosen, and where do estimates differ from reality. 
  Actual plans add runtime information such as row counts, resource usage, and warnings. 
+ 
 [[How to read an execution plan]]
 
 ```mermaid
@@ -42,7 +47,7 @@ flowchart TD
     D --> E
 ```
 
-A practical rule: the same logical SQL can compile to very different physical plans. PostgreSQL’s EXPLAIN examples show nested loop, hash join, and merge join as alternative physical strategies for joins, and SQL Server likewise models execution as a tree of physical operators. 
+A practical rule: the same logical SQL can compile to very different physical plans. PostgreSQL’s `EXPLAIN` examples show nested loop, hash join, and merge join as alternative physical strategies for joins, and SQL Server likewise models execution as a tree of physical operators. 
 
 ### What to know cold
 
@@ -52,12 +57,15 @@ A practical rule: the same logical SQL can compile to very different physical pl
 | Join algorithms you should recognize | Nested Loop, Hash Join, Merge Join                                                           | Nested Loop, Hash Match, Merge Join operators in showplan             |
 | Covering behavior                    | Index-only scans require index support and all needed columns to be available from the index | Nonkey included columns can cover a query and avoid base-table access |
 | Subset indexing                      | Partial indexes                                                                              | Filtered indexes                                                      |
-| Multicolumn caution                  | Use sparingly; more than three columns is often not useful unless workload is stylized       | Keep index keys narrow; don’t over-index heavily updated tables       |
+| Multicolumn caution with indexes     | Use sparingly; more than three columns is often not useful unless workload is stylized       | Keep index keys narrow; don’t over-index heavily updated tables       |
 
 ### Common pitfalls
-Many candidates know join syntax but cannot explain *plan shape*. A classic failure mode is saying “add an index” without naming the predicate, selectivity, or whether the optimizer will actually prefer the index. PostgreSQL warns that without `ANALYZE`, plan costing is almost certainly inaccurate, and SQL Server emphasizes dependence on distribution statistics for selectivity estimation. 
+Many candidates know join syntax but cannot explain *plan shape*. A classic failure mode is saying “add an index” without naming the predicate, selectivity, or whether the optimizer will actually prefer the index. 
 
-Another pitfall is misunderstanding composite indexes. Index column order matters because the index is ordered by key position, not by some abstract “most selective first” rule. PostgreSQL supports multicolumn indexes, but its docs tell you to use them sparingly; Use The Index, Luke gives the intuition that the first column is the primary sort criterion for a concatenated [[B-tree index]]. 
+PostgreSQL warns that without `ANALYZE`, plan costing is almost certainly inaccurate, and SQL Server emphasizes dependence on distribution statistics for selectivity estimation. 
+
+Another pitfall is misunderstanding composite indexes. Index column order matters because the index is ordered by key position, not by some abstract “most selective first” rule. PostgreSQL supports multicolumn indexes, but its docs tell you to use them sparingly;
+Use 'The Index, Luke' gives the intuition that the first column is the primary sort criterion for a concatenated [[B-tree index]]. 
 
 A third pitfall is assuming that “index seek good, scan bad.” That is too simple. Both PostgreSQL and SQL Server note that scans can be cheaper when a large fraction of a table is needed, or when a sequential access pattern beats many random lookups. 
 
@@ -96,7 +104,8 @@ WHERE customer_id = 42
   AND status = 'ACTIVE';
 ```
 
-In PostgreSQL, `INCLUDE` adds non-key columns so an index-only scan can answer more queries without visiting the heap, subject to index-only scan rules. In SQL Server, included columns serve the same broad purpose for nonclustered covering indexes. 
+In PostgreSQL, `INCLUDE` adds non-key columns so an index-only scan can answer more queries without visiting the heap, subject to index-only scan rules.
+In SQL Server, included columns serve the same broad purpose for nonclustered covering indexes. 
 
 A concise way to explain the three major join algorithms:
 - **Nested loop**: good when the outer side is small and the inner side can be probed efficiently, often by index. 
